@@ -5,12 +5,10 @@ bl_info = {
     "blender": (2, 7, 4),
     "api": 36079,
     "location": "Export Shape Key Animation for MetaMorph",
-    "description": "Creates Diff Maps as TGA files for each Shape Key which " +
-                   "can be used with MetaMorph in Unity",
+    "description": "Creates Diff Maps as TGA files for each Shape Key which can be used with MetaMorph in Unity",
     "warning": "",
     "url": "https://github.com/klattimer/io_export_diffmap",
-    "category": "Import-Export"
-}
+    "category": "Import-Export"}
 
 import bpy
 from mathutils import Vector, Color
@@ -41,7 +39,7 @@ def vertex_find_connections(mesh, vert_index):
     for n in mesh.polygons:
         for i in range(len(n.vertices)):
             if n.vertices[i] == vert_index:
-                list.append((n.index, i ))
+                list.append((n.index, i))
     return list
 
 
