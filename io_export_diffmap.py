@@ -1,14 +1,16 @@
 bl_info = {
-    "name": "Export MetaMorph Diff Map Animation",
-    "author": "Foolish Frost / Ivo Grigull",
-    "version": (1, 1, 2),
-    "blender": (2, 5, 8),
+    "name": "Export to MetaMorph for Unity",
+    "author": "Foolish Frost / Ivo Grigull, Karl Lattimer",
+    "version": (1, 2, 0),
+    "blender": (2, 7, 4),
     "api": 36079,
-    "location": "Mesh-data section in property-window",
-    "description": "Creates Diff Maps for each Shapekey",
+    "location": "Export Shape Key Animation for MetaMorph",
+    "description": "Creates Diff Maps as TGA files for each Shape Key which " +
+                   "can be used with MetaMorph in Unity",
     "warning": "",
-    "url": "http://www.rezzable.com",
-    "category": "Import-Export"}
+    "url": "https://github.com/klattimer/io_export_diffmap",
+    "category": "Import-Export"
+}
 
 import bpy
 from mathutils import Vector, Color
@@ -17,9 +19,9 @@ from bpy.props import *
 from bpy_extras.io_utils import ExportHelper, ImportHelper
 import os
 
-__version__ = '1.1.2'
+__version__ = '1.2.0'
 
-# ------------------------------------ core functions ------------------------------------
+# ------------------------------------ core functions -------------------------
 
 # Global variables
 original_materials = []
@@ -32,14 +34,14 @@ MaxDiffStore = []
 
 # Find faces that use the given vertex
 # Returns: tuple with face_index and vertex_index
-def vertex_find_connections( mesh, vert_index):
+def vertex_find_connections(mesh, vert_index):
 
     list = []
 
     for n in mesh.polygons:
-        for i in range( len(n.vertices) ):
+        for i in range(len(n.vertices)):
             if n.vertices[i] == vert_index:
-                list.append( (n.index, i ) )
+                list.append((n.index, i ))
     return list
 
 
@@ -64,7 +66,7 @@ def pre(ob):
     # Store face material indices
     original_face_mat_indices = []
     for n in mesh.polygons:
-        original_face_mat_indices.append( n.material_index )
+        original_face_mat_indices.append(n.material_index)
         n.material_index = 0
 
     # Remember and remove materials
@@ -72,7 +74,7 @@ def pre(ob):
     for n in mesh.materials:
         print("Saving Material: " + n.name)
         original_materials.append(n)
-    #for n in original_materials:
+    # for n in original_materials:
     temp_i = 0
     for n in mesh.materials:
         mesh.materials.pop(temp_i)
@@ -80,7 +82,7 @@ def pre(ob):
     # Create new temp material for baking
     mat = bpy.data.materials.new(name="DiffMap_Bake")
     mat.use_vertex_color_paint = True
-    mat.diffuse_color = Color([1,1,1])
+    mat.diffuse_color = Color([1, 1, 1])
     mat.diffuse_intensity = 1.0
     mat.use_shadeless = True
     mesh.materials.append(mat)
@@ -94,7 +96,6 @@ def pre(ob):
         vcol.active_render = True
     else:
         print("Amount limit of vertex color layers exceeded")
-
 
 
 # Restore things
@@ -114,18 +115,14 @@ def post(ob):
     # Remove temp material
     mesh.materials.pop()
     mat.user_clear()
-    bpy.data.materials.remove( mat )
+    bpy.data.materials.remove(mat)
 
     # Restore original materials
-    temp_index = 0
-    #mesh.materials.empty()
+    for n in mesh.materials:
+        mesh.materials.pop()
+
     for n in original_materials:
-        #mesh.materials.append(n)
-        if (len(mesh.materials) < temp_index - 1):
-            mesh.materials.append(n)
-        else:
-            mesh.materials[temp_index] = original_materials[temp_index]
-        temp_index = temp_index + 1
+        mesh.materials.append(n)
 
     # Restore face material indices
     for n in range(len(original_face_mat_indices)-1):
@@ -133,7 +130,6 @@ def post(ob):
 
     # Remove temp vertex color layer
     bpy.ops.mesh.vertex_color_remove()
-
 
     # Refresh UI
     bpy.context.scene.frame_current = bpy.context.scene.frame_current
@@ -143,16 +139,14 @@ def post(ob):
     original_face_mat_indices = []
 
 
-
-def generate_diffmap_from_shape(ob, filepath, name, shape, shapeson, width=128, height=128, margin=10 ):
-
+def generate_diffmap_from_shape(ob, filepath, name, shape, shapeson,
+                                width=128, height=128, margin=10):
     global ShapeKeyName
     global MaxDiffStore
 
     mesh = ob.data
     uvtex = mesh.uv_textures.active
     vcol = mesh.vertex_colors.active
-
 
     # Find biggest distance offset in shape
     maxdiff = 0.0
@@ -168,22 +162,24 @@ def generate_diffmap_from_shape(ob, filepath, name, shape, shapeson, width=128, 
         ShapeKeyName = ShapeKeyName + [shape.name]
         MaxDiffStore = MaxDiffStore + [maxdiff]
 
-    if shapeson == True:
+    if shapeson is True:
         # Generate vertex color from shape key offset
         for n in mesh.vertices:
 
-            faces = vertex_find_connections( mesh, n.index)
+            faces = vertex_find_connections(mesh, n.index)
 
-            color = Color( [0,0,0] )
+            color = Color([0, 0, 0])
 
             diff = n.co.copy() - shape.data[n.index].co.copy()
 
             if maxdiff > 0:
-                color[0] = 1.0 - (((diff[0] / maxdiff) + 1.0) *0.5)
-                color[1] = 1.0 - (((diff[1] / maxdiff) + 1.0) *0.5)
-                color[2] = 1.0 - (((diff[2] / maxdiff) + 1.0) *0.5)
+                color[0] = 1.0 - (((diff[0] / maxdiff) + 1.0) * 0.5)
+                color[1] = 1.0 - (((diff[1] / maxdiff) + 1.0) * 0.5)
+                color[2] = 1.0 - (((diff[2] / maxdiff) + 1.0) * 0.5)
 
-            # Apply vertex color to all connected face corners (vertcolors have same structure as uvs)
+            # Apply vertex color to all connected face corners
+            # (vertcolors have same structure as uvs)
+            # Adjusted from color1...color4 to color [klattimer]
             for i in faces:
                 if i[1] == 0:
                     vcol.data[i[0]].color = color
@@ -194,14 +190,13 @@ def generate_diffmap_from_shape(ob, filepath, name, shape, shapeson, width=128, 
                 if i[1] == 3:
                     vcol.data[i[0]].color = color
 
-
         # Create new image to bake to
         image = bpy.data.images.new(name="DiffMap_Bake", width=width, height=height)
         image.generated_width = width
         image.generated_height = height
 
-
         # Construct complete filepath
+        # Adjusted to fix crash in bytes/str issue
         platform = str(bpy.app.build_platform)
         if platform.find("Windows") != -1:
             path = filepath + '\\' + name + '-' + shape.name + '.tga'
@@ -214,23 +209,23 @@ def generate_diffmap_from_shape(ob, filepath, name, shape, shapeson, width=128, 
 
         image.filepath = path
 
-
         # assign image to mesh (all uv faces)
-        original_image = uvtex.data[0].image # Simply taking the image from the first face
+        # Simply taking the image from the first face
+        original_image = uvtex.data[0].image
         original_face_images = []
 
         for n in uvtex.data:
-            if n.image == None:
-                original_face_images.append( None )
+            if n.image is None:
+                original_face_images.append(None)
             else:
-                original_face_images.append( n.image.name )
+                original_face_images.append(n.image.name)
 
             n.image = image
-
 
         # Bake
         render = bpy.context.scene.render
 
+        # Commented out klattimer
         # tempcmv = render.use_color_management;
 
         render.bake_type = 'TEXTURE'
@@ -242,30 +237,28 @@ def generate_diffmap_from_shape(ob, filepath, name, shape, shapeson, width=128, 
 
         bpy.ops.object.bake_image()
 
-
-
         image.save()
 
         # re-assign images to mesh faces
-        for n in range( len(original_face_images) ):
+        for n in range(len(original_face_images)):
 
             tmp = original_face_images[n]
-            if original_face_images[n] != None:
-                tmp = bpy.data.images[ original_face_images[n] ]
+            if original_face_images[n] is not None:
+                tmp = bpy.data.images[original_face_images[n]]
             else:
                 tmp = None
 
             uvtex.data[n].image = tmp
 
-
         # Remove image from memory
         image.user_clear()
         bpy.data.images.remove(image)
 
+        # Removed deprecated code (klattimer)
         # render.use_color_management = tempcmv
 
         # Tell user what was exported
-        print( " exported %s" % path )
+        print(" exported %s" % path)
 
 
 # General error checking
@@ -465,7 +458,8 @@ class EXPORT_OT_tools_diffmap_exporter(bpy.types.Operator):
 
         me = context.active_object.data
         col = layout.column(align=False)
-        # col.template_list("MESH_UL_uvmaps_vcols", "uvmaps", me, "uv_textures", me.uv_textures, "active_index", rows=2)
+        # Removed, causing crash (klattimer)
+        # col.template_list(me, "uv_textures", me.uv_textures, "active_index", rows=2)
 
         col = layout.column(align=False)
         col.prop(self, "shapeson")
@@ -497,9 +491,9 @@ class EXPORT_OT_tools_diffmap_exporter(bpy.types.Operator):
 def menu_func(self, context):
     if bpy.data.filepath:
         default_path = os.path.split(bpy.data.filepath)[0] + "/"
-        self.layout.operator(EXPORT_OT_tools_diffmap_exporter.bl_idname, text="Export DiffMaps and Animations").filepath = default_path
+        self.layout.operator(EXPORT_OT_tools_diffmap_exporter.bl_idname, text="Export Shape Key Animation for MetaMorph").filepath = default_path
     else:
-        self.layout.operator(EXPORT_OT_tools_diffmap_exporter.bl_idname, text="Export DiffMaps and Animations")
+        self.layout.operator(EXPORT_OT_tools_diffmap_exporter.bl_idname, text="Export Shape Key Animation for MetaMorph")
 
 def register():
     bpy.utils.register_module(__name__)
