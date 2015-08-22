@@ -33,9 +33,7 @@ MaxDiffStore = []
 # Find faces that use the given vertex
 # Returns: tuple with face_index and vertex_index
 def vertex_find_connections(mesh, vert_index):
-
     list = []
-
     for n in mesh.polygons:
         for i in range(len(n.vertices)):
             if n.vertices[i] == vert_index:
@@ -164,7 +162,7 @@ def generate_diffmap_from_shape(ob, filepath, name, shape, shapeson,
         # Generate vertex color from shape key offset
         for n in mesh.vertices:
 
-            faces = vertex_find_connections(mesh, n.index)
+            # faces = vertex_find_connections(mesh, n.index)
 
             color = Color([0, 0, 0])
 
@@ -178,15 +176,16 @@ def generate_diffmap_from_shape(ob, filepath, name, shape, shapeson,
             # Apply vertex color to all connected face corners
             # (vertcolors have same structure as uvs)
             # Adjusted from color1...color4 to color [klattimer]
-            for i in faces:
-                if i[1] == 0:
-                    vcol.data[i[0]].color = color
-                if i[1] == 1:
-                    vcol.data[i[0]].color = color
-                if i[1] == 2:
-                    vcol.data[i[0]].color = color
-                if i[1] == 3:
-                    vcol.data[i[0]].color = color
+            # The above vertex_find_connections doesn't work in blender 2.73 so
+            # I replaced it with this, which seems to work, and touches all vertices
+            # color = [1,0,1]
+            for p in mesh.polygons:
+                i = 0
+                for v in p.vertices:
+                    if v == n.index:
+                        t = p.loop_indices[i]
+                        vcol.data[t].color = color
+                    i = i+1
 
         # Create new image to bake to
         image = bpy.data.images.new(name="DiffMap_Bake", width=width, height=height)
