@@ -150,6 +150,7 @@ def generate_diffmap_from_shape(ob, filepath, name, shape, shapeson,
     for n in mesh.vertices:
 
         diff = n.co.copy() - shape.data[n.index].co.copy()
+
         for i in diff:
             if abs(i) > maxdiff:
                 maxdiff = abs(i)
@@ -348,60 +349,287 @@ def Write_Animation(Afilepath, Afilename, self):
     print("Starting writing Animation List")
     #print("-------------------------------")
 
+    jsonFilename = Afilepath + '/' + Afilename +".json"
+    jsonData = {}
+    jsonData['ShapeKeys'] = {}
+    jsonData['Animations'] = {}
+
     Afileset = Afilepath + '/' + Afilename + '-DiffMapAnimation.TXT'
 
     # Okay, let's get the base data.
     MyObject = bpy.context.active_object
     MyShapekeys = MyObject.data.shape_keys.key_blocks
-    AnimationStart = bpy.context.scene.frame_start
-    AnimationEnd = bpy.context.scene.frame_end
 
-    name = self.name
+    for animationRange in MyObject.animation_list:
+        AnimationStart = animationRange.startFrame # bpy.context.scene.frame_start
+        AnimationEnd = animationRange.endFrame # bpy.context.scene.frame_end
 
-    framestring = str(AnimationStart) + 'to' + str(AnimationEnd)
-    Afileset = Afilepath + '/' + Afilename + '-' + framestring + '-DiffMapAnimation.TXT'
-    # open the file...
-    Animation_Output = open(Afileset,"w")
+        name = self.name
 
-    for AnimationShapes in range(0, len(ShapeKeyName)):
-        hasvalue = False
-        for AnimationFrame in range(AnimationStart, AnimationEnd + 1):
-            bpy.context.scene.frame_set(AnimationFrame)
-            if MyShapekeys[ShapeKeyName[AnimationShapes]].value > 0.0005:
-                hasvalue = True
-        if hasvalue == True:
-            ShapeKeyName2 = ShapeKeyName2 + [ShapeKeyName[AnimationShapes]]
-            ShapeKeyName3 = ShapeKeyName3 + [name+"-"+ShapeKeyName[AnimationShapes]]
-            MaxDiffStore2 = MaxDiffStore2 + [MaxDiffStore[AnimationShapes]]
+        framestring = str(AnimationStart) + 'to' + str(AnimationEnd)
+        Afileset = Afilepath + '/' + Afilename + '-' + framestring + '-' + animationRange.name +'-DiffMapAnimation.TXT'
+        # open the file...
+        Animation_Output = open(Afileset,"w")
 
-    Animation_Output.write(str(list(ShapeKeyName3)) + "\n")
-    Animation_Output.write(str(list(MaxDiffStore2)) + "\n")
+        for AnimationShapes in range(0, len(ShapeKeyName)):
+            hasvalue = False
+            for AnimationFrame in range(AnimationStart, AnimationEnd + 1):
+                bpy.context.scene.frame_set(AnimationFrame)
+                if MyShapekeys[ShapeKeyName[AnimationShapes]].value > 0.0005:
+                    hasvalue = True
+            if hasvalue == True:
+                ShapeKeyName2 = ShapeKeyName2 + [ShapeKeyName[AnimationShapes]]
+                ShapeKeyName3 = ShapeKeyName3 + [name+"-"+ShapeKeyName[AnimationShapes]]
+                MaxDiffStore2 = MaxDiffStore2 + [MaxDiffStore[AnimationShapes]]
 
-    # And loop for every frame of the animation!
-    for AnimationFrame in range(AnimationStart, AnimationEnd + 1):
-        # Set the current animation frame
-        bpy.context.scene.frame_set(AnimationFrame)
+        for i in range(len(list(ShapeKeyName3))):
+            shapeKeyName = list(ShapeKeyName3)[i]
+            jsonData['ShapeKeys'][shapeKeyName] = {}
+            jsonData['ShapeKeys'][shapeKeyName]['ImageName'] = name + '-' + shapeKeyName + '.tga'
+            jsonData['ShapeKeys'][shapeKeyName]['Scale'] = {}
+            jsonData['ShapeKeys'][shapeKeyName]['Scale']['x'] = list(MaxDiffStore2)[i]
+            jsonData['ShapeKeys'][shapeKeyName]['Scale']['y'] = list(MaxDiffStore2)[i]
+            jsonData['ShapeKeys'][shapeKeyName]['Scale']['z'] = list(MaxDiffStore2)[i]
 
-        #print("Now working with animation frame: " + str(AnimationFrame))
+        Animation_Output.write(str(list(ShapeKeyName3)) + "\n")
+        Animation_Output.write(str(list(MaxDiffStore2)) + "\n")
 
-        # And loop for all but the Basis shapekey.
-        row = []
+        animationName = animationRange.name
+        jsonData['Animations'][animationName] = {}
+        jsonData['Animations'][animationName]['ShapeKeys'] = list(ShapeKeyName3)
+
+        bpy.context.scene.frame_set(AnimationStart)
         for AnimationShapes in range(0, len(ShapeKeyName2)):
             MyData = MyShapekeys[ShapeKeyName2[AnimationShapes]].value
             row = row + [float("%0.4f" % (MyData))]
+        jsonData['Animations'][animationName]['StartShape'] = row
 
-        Animation_Output.write(str(list(row)) + "\n")
-        #print (list(row))
+        # And loop for every frame of the animation!
+        for AnimationFrame in range(AnimationStart, AnimationEnd + 1):
+            # Set the current animation frame
+            bpy.context.scene.frame_set(AnimationFrame)
 
-    Animation_Output.close()
+            #print("Now working with animation frame: " + str(AnimationFrame))
 
-    #print("---------------------------")
-    print("Done writing Animation List")
-    print("---------------------------")
+            # And loop for all but the Basis shapekey.
+            row = []
+            for AnimationShapes in range(0, len(ShapeKeyName2)):
+                MyData = MyShapekeys[ShapeKeyName2[AnimationShapes]].value
+                row = row + [float("%0.4f" % (MyData))]
+
+            jsonData['Animations'][animationName]['Frames'].append(row)
+            Animation_Output.write(str(list(row)) + "\n")
+            #print (list(row))
+
+        Animation_Output.close()
+
+        #print("---------------------------")
+        print("Done writing Animation List")
+        print("---------------------------")
 
 
 # ------------------------------------ UI area  ------------------------------------
 
+class AnimationListItem(bpy.types.PropertyGroup):
+    """ Group of properties representing an item in the list """
+
+    name = bpy.props.StringProperty(
+           name="Name",
+           description="Animation Name",
+           default="Timeline")
+
+    startFrame = bpy.props.IntProperty(
+           name="Start Frame",
+           description="Start frame of animation range",
+           default=bpy.context.scene.frame_start,
+           min=bpy.context.scene.frame_start,
+           max=bpy.context.scene.frame_end)
+    endFrame = bpy.props.IntProperty(
+           name="End Frame",
+           description="End frame of animation range",
+           default=bpy.context.scene.frame_end,
+           min=bpy.context.scene.frame_start,
+           max=bpy.context.scene.frame_end)
+"""
+class AnimationEditorPanel(bpy.types.Panel):
+    bl_label = "Shape Key Animation Detail"
+    bl_description = "Define animation timeline ranges for shape keys"
+    bl_space_type = "PROPERTIES"
+    bl_region_type = "WINDOW"
+    bl_context = "object"
+
+    def draw(self, context):
+        layout = self.layout
+        object = context.object
+
+        item = object.animation_list[object.animation_list_index]
+        layout.prop(item, 'name')
+        layout.prop(item, "startFrame")
+        layout.prop(item, "endFrame")
+"""
+
+class AnimationListPanel(bpy.types.Panel):
+    bl_label = "Shape Key Animation Ranges"
+    bl_description = "Define animation timeline ranges for shape keys."
+    bl_space_type = "PROPERTIES"
+    bl_region_type = "WINDOW"
+    bl_context = "object"
+
+    def draw(self, context):
+        layout = self.layout
+        object = context.object
+
+        row = layout.row()
+        row.template_list("ObjectAnimationsList", "The_List", object, "animation_list", object, "animation_list_index" )
+
+        row = layout.row()
+        row.operator('animation_list.new_item')
+        row.operator('animation_list.delete_item')
+        #row.operator('animation_list.move_item', text='UP').direction = 'UP'
+        #row.operator('animation_list.move_item', text='DOWN').direction = 'DOWN'
+
+        if object.animation_list_index >= 0 and len(object.animation_list) > 0:
+            item = object.animation_list[object.animation_list_index]
+
+        row = layout.row()
+        row.prop(item, "name")
+        row.prop(item, "startFrame")
+        row.prop(item, "endFrame")
+
+class LIST_OT_NewItem(bpy.types.Operator):
+    """ Add a new item to the list """
+
+    bl_idname = "animation_list.new_item"
+    bl_label = "Add Range"
+
+    def execute(self, context):
+        context.object.animation_list.add()
+
+        return{'FINISHED'}
+
+
+class LIST_OT_DeleteItem(bpy.types.Operator):
+    """ Delete the selected item from the list """
+
+    bl_idname = "animation_list.delete_item"
+    bl_label = "Delete Range"
+
+    @classmethod
+    def poll(self, context):
+        """ Enable if there's something in the list. """
+
+        return context.object.animation_list > 0
+
+    def move_index(self):
+        """ Move index of an item render queue while clamping it. """
+
+        index = bpy.context.object.animation_list_index
+        list_length = len(bpy.context.object.animation_list) - 1 # (index starts at 0)
+        new_index = 0
+
+        if self.direction == 'UP':
+            new_index = index - 1
+        elif self.direction == 'DOWN':
+            new_index = index + 1
+
+        new_index = max(0, min(new_index, list_length))
+        index = new_index
+
+
+    def execute(self, context):
+        list = context.object.animation_list
+        index = context.object.animation_list_index
+
+        if self.direction == 'DOWN':
+            neighbor = index + 1
+            queue.move(index,neighbor)
+            self.move_index()
+
+        elif self.direction == 'UP':
+            neighbor = index - 1
+            queue.move(neighbor, index)
+            self.move_index()
+        else:
+            return{'CANCELLED'}
+
+        return{'FINISHED'}(context.object.animation_list) > 0
+
+    def execute(self, context):
+        list = context.object.animation_list
+        index = context.object.animation_list_index
+
+        list.remove(index)
+
+        if index > 0:
+            index = index - 1
+
+        return{'FINISHED'}
+
+
+class LIST_OT_MoveItem(bpy.types.Operator):
+    """ Move an item in the list """
+
+    bl_idname = "animation_list.move_item"
+    bl_label = "Move an item in the list"
+
+    direction = bpy.props.EnumProperty(
+                items=(
+                    ('UP', 'Up', ""),
+                    ('DOWN', 'Down', ""),))
+
+    @classmethod
+    def poll(self, context):
+        """ Enable if there's something in the list. """
+
+        return context.object.animation_list > 0
+
+
+    def move_index(self):
+        """ Move index of an item render queue while clamping it. """
+
+        index = bpy.context.object.animation_list_index
+        list_length = len(bpy.context.object.animation_list) - 1 # (index starts at 0)
+        new_index = 0
+
+        if self.direction == 'UP':
+            new_index = index - 1
+        elif self.direction == 'DOWN':
+            new_index = index + 1
+
+        new_index = max(0, min(new_index, list_length))
+        index = new_index
+
+
+    def execute(self, context):
+        list = context.object.animation_list
+        index = context.object.animation_list_index
+
+        if self.direction == 'DOWN':
+            neighbor = index + 1
+            queue.move(index,neighbor)
+            self.move_index()
+
+        elif self.direction == 'UP':
+            neighbor = index - 1
+            queue.move(neighbor, index)
+            self.move_index()
+        else:
+            return{'CANCELLED'}
+
+        return{'FINISHED'}
+
+class ObjectAnimationsList(bpy.types.UIList):
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
+        # We could write some code to decide which icon to use here...
+        custom_icon = 'OBJECT_DATAMODE'
+
+        # Make sure your code supports all 3 layout types
+        if self.layout_type in {'DEFAULT', 'COMPACT'}:
+            layout.label(item.name, icon = custom_icon)
+
+        elif self.layout_type in {'GRID'}:
+            layout.alignment = 'CENTER'
+            layout.label("", icon = custom_icon)
 
 
 class EXPORT_OT_tools_diffmap_exporter(bpy.types.Operator):
@@ -496,9 +724,25 @@ def register():
     bpy.utils.register_module(__name__)
     bpy.types.INFO_MT_file_export.append(menu_func)
 
+    bpy.types.Object.animation_list = bpy.props.CollectionProperty(type = AnimationListItem)
+    bpy.types.Object.animation_list_index = bpy.props.IntProperty(name = "Index for animation_list", default = 0)
+
+    # bpy.utils.register_class(ObjectAnimationsList)
+    #bpy.utils.register_class(LIST_OT_NewItem)
+    #bpy.utils.register_class(LIST_OT_DeleteItem)
+    #bpy.utils.register_class(LIST_OT_MoveItem)
+
 def unregister():
     bpy.utils.unregister_module(__name__)
     bpy.types.INFO_MT_file_export.remove(menu_func)
+
+    del bpy.types.Object.animation_list
+    del bpy.types.Object.animation_list_index
+
+    # bpy.utils.unregister_class(ObjectAnimationsList)
+    #bpy.utils.unregister_class(LIST_OT_NewItem)
+    #bpy.utils.unregister_class(LIST_OT_DeleteItem)
+    #bpy.utils.unregister_class(LIST_OT_MoveItem)
 
 if __name__ == "__main__":
     register()
