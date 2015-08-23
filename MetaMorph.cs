@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
@@ -12,67 +13,70 @@ public class MetaMorphSettings {
 	public int verbose = 0;
 }
 
-public class dataTemplate {
-	public string name;
-}
-
-public class DiffMap : dataTemplate {
-	public Texture2D image;
-	public float multiplier = 0;
-	public Vector3 scale;
-
-	DiffMap () {
-		scale = new Vector3(1,1,1);
-	}
-}
-
-public class MorphItem {
-	public Vector3[] ShapeMorph;
-	public int[] ShapeLink;
-	public float ShapePower;
-}
-
-public class AnimationRecording : dataTemplate {
-	//public string name;							// ID for a shapekey animation set
-	public TextAsset text;						// Textfile with the animation data
-}
-
-public class CurrentlyActiveMorph : dataTemplate {
-	//string name;  // relates directly to Diff_Map_class.AR_Name
-	public int link; // link to array Diff_Map_class[] (speed up loops)
-	
-	public float CAMStartTime;
-	public float CAMTimeFrame; 
-	
-	public float CAMStartLevel; // The time of the animation being started, using Time.realtimeSinceStartup
-	public float CAMEndLevel;
-	
-	public bool CAMEnd;
-}
-
-public class CurrentlyActiveAnimation : dataTemplate {
-	//string name;  // relates directly to Animation_Recording_class.AR_Name
-	public int link; // link to array Animation_Recording_class[] (speed up loops)
-	
-	public float CAAStartTime; // The time of the animation being started, using Time.realtimeSinceStartup
-	public float CAAEndTime; 
-	public float CAAFadeTime; 
-	
-	public float CAASpeed;
-	
-	public float CAAEffectLevel; 
-	
-	public int CAAStyle; 
-}
-
-public class AnimationStyles {
-	public const int end = 0;
-	public const int freeze = 1;
-	public const int loop = 2;
-	public const int pingPong = 3;
-}
-
 public class MetaMorph : MonoBehaviour {
+	[Serializable]
+	public class dataTemplate : System.Object {
+		public string name;
+	}
+	
+	[Serializable]
+	public class DiffMap : dataTemplate {
+		public Texture2D image;
+		public float multiplier = 0;
+		public Vector3 scale;
+		
+		DiffMap () {
+			scale = new Vector3(1,1,1);
+		}
+	}
+	
+	public class MorphItem {
+		public Vector3[] ShapeMorph;
+		public int[] ShapeLink;
+		public float ShapePower;
+	}
+
+	[Serializable]
+	public class AnimationRecording : dataTemplate {
+		//public string name;							// ID for a shapekey animation set
+		public TextAsset text;							// Textfile with the animation data
+	}
+	
+	public class CurrentlyActiveMorph : dataTemplate {
+		//string name;  // relates directly to Diff_Map_class.AR_Name
+		public int link; // link to array Diff_Map_class[] (speed up loops)
+		
+		public float CAMStartTime;
+		public float CAMTimeFrame; 
+		
+		public float CAMStartLevel; // The time of the animation being started, using Time.realtimeSinceStartup
+		public float CAMEndLevel;
+		
+		public bool CAMEnd;
+	}
+	
+	public class CurrentlyActiveAnimation : dataTemplate {
+		//string name;  // relates directly to Animation_Recording_class.AR_Name
+		public int link; // link to array Animation_Recording_class[] (speed up loops)
+		
+		public float CAAStartTime; // The time of the animation being started, using Time.realtimeSinceStartup
+		public float CAAEndTime; 
+		public float CAAFadeTime; 
+		
+		public float CAASpeed;
+		
+		public float CAAEffectLevel; 
+		
+		public int CAAStyle; 
+	}
+	
+	public class AnimationStyles {
+		public const int end = 0;
+		public const int freeze = 1;
+		public const int loop = 2;
+		public const int pingPong = 3;
+	}
+
 	public MetaMorphSettings metaMorphSettings;
 	public DiffMap[] diffMaps;
 	public AnimationRecording[] animationRecordings;
