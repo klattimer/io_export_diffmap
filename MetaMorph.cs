@@ -4,16 +4,19 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
-public class MetaMorphSettings {
-	public GameObject meshObject;				// Object to Morph
-	public bool isBoned = true;					//
-	public bool UVLayerOne = true;				// Use first or second UV layer
-	public bool recalculateNormals = false;		// Run mesh.RecalculateNormals() every frame
-	public bool onlyWhenVisible = true;			// On animate visible mesh
-	public int verbose = 0;
-}
 
 public class MetaMorph : MonoBehaviour {
+	[Serializable]
+	public class MetaMorphSettings : System.Object {
+		public GameObject meshObject;				// Object to Morph
+		public bool isBoned = false;				//
+		public bool UVLayerOne = true;				// Use first or second UV layer
+		public bool recalculateNormals = false;		// Run mesh.RecalculateNormals() every frame
+		public bool onlyWhenVisible = true;			// On animate visible mesh
+		public int verbose = 0;
+	}
+
+
 	[Serializable]
 	public class dataTemplate : System.Object {
 		public string name;
@@ -280,7 +283,7 @@ public class MetaMorph : MonoBehaviour {
 	}
 
 	void InitMetaMorph () {
-		metaMorphSettings = new MetaMorphSettings ();
+		//metaMorphSettings = new MetaMorphSettings ();
 
 		currentlyActiveMorphs = new List<CurrentlyActiveMorph> ();
 		currentlyActiveAnimations = new List<CurrentlyActiveAnimation> ();
@@ -299,6 +302,7 @@ public class MetaMorph : MonoBehaviour {
 	// Use this for initialization
 	void Start () {
 		InitMetaMorph ();
+		animatePlay ("Parachute Open", 1, AnimationStyles.end);
 	}
 
 	// We need a Mesh render for this to work.  You may need to either place this script 
