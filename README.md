@@ -1,6 +1,8 @@
 # io_export_diffmap
 
-Do not use this project, a better alternative will be ready very shortly.
+Do not use this project. Use io export shapekeys instead
+
+https://github.com/klattimer/io_export_shapekeys
 
 ## Features
 
